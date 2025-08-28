@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Dino Game</title>
+  <iframe width="0" height="0" src="https://www.youtuberepeater.com/watch?v=IkDnwkiWXsg#gsc.tab=0" frameborder="0" allow="autoplay"></iframe>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      animation: neonShift 10s infinite alternate;
+    }
+
+    @keyframes neonShift {
+      0% { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); }
+      50% { background: linear-gradient(135deg, #ff0080, #7928ca, #2af598); }
+      100% { background: linear-gradient(135deg, #00c6ff, #0072ff, #ff6a00); }
+    }
+
+    canvas {
+      background: rgba(0, 0, 0, 0.5);
+      border: 3px solid #fff;
+      box-shadow: 0 0 20px #0ff, 0 0 40px #0ff;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="800" height="200"></canvas>
+
+  <!-- Background Music -->
+  <audio id="bgm" loop>
+    <!-- put wildflower.mp3 in same folder as this file -->
+    <source src="wildflower.mp3" type="audio/mpeg">
+    <!-- fallback online mp3 -->
+    <source src="https://www.youtube.com/watch?v=l08Zw-RY__Q" type="audio/mpeg">
+  </audio>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Music
+    const bgm = document.getElementById("bgm");
+
+    let dino = { 
+      x: 50, y: 150, width: 30, height: 30, 
+      dy: 0, gravity: 0.6, jumpPower: -12, grounded: true 
+    };
+    let obstacles = [];
+    let frame = 0;
+    let score = 0;
+    let gameOver = false;
+    let particles = [];
+
+    function drawDino() {
+      ctx.fillStyle = "#0ff";
+      ctx.shadowColor = "#0ff";
+      ctx.shadowBlur = 20;
+      ctx.fillRect(dino.x, dino.y + Math.sin(frame * 0.1) * 3, dino.width, dino.height);
+      ctx.shadowBlur = 0;
+    }
+
+    function drawObstacles() {
+      ctx.fillStyle = "#ff0080";
+      ctx.shadowColor = "#ff0080";
+      ctx.shadowBlur = 15;
+      obstacles.forEach(obs => ctx.fillRect(obs.x, obs.y, obs.width, obs.height));
+      ctx.shadowBlur = 0;
+    }
+
+    function updateObstacles() {
+      if (frame % 120 === 0) {
+        let height = 30 + Math.random() * 20;
+        obstacles.push({ x: canvas.width, y: canvas.height - height, width: 20, height: height });
+      }
+      obstacles.forEach(obs => obs.x -= 6);
+      obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
+    }
+
+    function detectCollision() {
+      for (let obs of obstacles) {
+        if (
+          dino.x < obs.x + obs.width &&
+          dino.x + dino.width > obs.x &&
+          dino.y < obs.y + obs.height &&
+          dino.y + dino.height > obs.y
+        ) {
+          gameOver = true;
+        }
+      }
+    }
+
+    function jump() {
+      if (dino.grounded) {
+        dino.dy = dino.jumpPower;
+        dino.grounded = false;
+      }
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.code === "Space" || e.code === "ArrowUp") {
+        jump();
+        playMusic(); // start music when jumping
+      }
+      if (gameOver && e.code === "Enter") {
+        resetGame();
+        playMusic(); // restart music if game restarted
+      }
+    });
+
+    function playMusic() {
+      if (bgm.paused) {
+        bgm.volume = 0.5; // softer background music
+        bgm.play().catch(err => console.log("Music blocked until user interacts:", err));
+      }
+    }
+
+    function resetGame() {
+      dino.y = 150;
+      dino.dy = 0;
+      dino.grounded = true;
+      obstacles = [];
+      frame = 0;
+      score = 0;
+      gameOver = false;
+      gameLoop();
+    }
+
+    function createParticles() {
+      if (Math.random() < 0.2) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: 0,
+          size: Math.random() * 3 + 1,
+          speed: Math.random() * 2 + 1,
+          color: `hsl(${Math.random() * 360}, 100%, 70%)`
+        });
+      }
+      particles.forEach(p => p.y += p.speed);
+      particles = particles.filter(p => p.y < canvas.height);
+    }
+
+    function drawParticles() {
+      particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 10;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+        ctx.shadowBlur = 0;
+      });
+    }
+
+    function gameLoop() {
+      if (gameOver) {
+        ctx.fillStyle = "#fff";
+        ctx.font = "30px Arial";
+        ctx.fillText("GAME OVER - Press Enter", 200, 100);
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      dino.dy += dino.gravity;
+      dino.y += dino.dy;
+      if (dino.y >= 150) {
+        dino.y = 150;
+        dino.dy = 0;
+        dino.grounded = true;
+      }
+
+      createParticles();
+      drawParticles();
+      drawDino();
+      updateObstacles();
+      drawObstacles();
+      detectCollision();
+
+      score++;
+      ctx.fillStyle = "#fff";
+      ctx.font = "20px Arial";
+      ctx.fillText("Score: " + score, 650, 30);
+
+      frame++;
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
+</body>
+</html>
